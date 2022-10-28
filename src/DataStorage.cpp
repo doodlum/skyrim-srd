@@ -231,6 +231,18 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 	return a_sounds.emplace_back(soundRecord);
 }
 
+bool DataStorage::IsModLoaded(std::string a_modname)
+{
+	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
+	if (a_modname.ends_with(".esl")) {
+		if (dataHandler->GetLoadedLightModIndex(a_modname))
+			return true;
+	} else if (dataHandler->GetLoadedModIndex(a_modname)) {
+		return true;
+	}
+	return false;
+}
+
 void DataStorage::RunConfig(json& a_jsonData)
 {
 	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
@@ -238,13 +250,18 @@ void DataStorage::RunConfig(json& a_jsonData)
 
 	for (auto& record : a_jsonData["Requirements"]) {
 		std::string modname = record;
-		if (modname.ends_with(".esl")) {
-			if (dataHandler->GetLoadedLightModIndex(modname))
+		bool notLoad = false;
+		if (modname.ends_with('!')) {
+			notLoad = true;
+			modname.pop_back();
+			if (!IsModLoaded(modname))
 				continue;
-		} else if (dataHandler->GetLoadedModIndex(modname)) {
+		} else if (IsModLoaded(modname))
 			continue;
-		}
-		logger::info("	Missing requirement {}", modname);
+		if (notLoad)
+			logger::info("	Missing requirement NOT {}", modname);
+		else
+			logger::info("	Missing requirement {}", modname);
 		load = false;
 	}
 
