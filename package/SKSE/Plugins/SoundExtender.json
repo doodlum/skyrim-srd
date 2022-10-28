@@ -1,0 +1,49 @@
+{
+    "Regions": [
+        {
+            "Region": "WeatherWhiterun",
+            "RDSA": [
+                {
+                    "Sound": "Skyrim.esm|3C777",
+                    "Chance": 1.0,
+                    "Flags": [
+                        "Pleasant",
+                        "Cloudy",
+                        "Rainy",
+                        "Snowy"
+                    ]
+                },
+                {
+                    "Sound": "Skyrim.esm|3F3FC",
+                    "Chance": 1.0,
+                    "Flags": [
+                        "Pleasant",
+                        "Cloudy",
+                        "Rainy",
+                        "Snowy"
+                    ]
+                },
+                {
+                    "Sound": "Skyrim.esm|3F560",
+                    "Chance": 1.0,
+                    "Flags": [
+                        "Pleasant",
+                        "Cloudy",
+                        "Rainy",
+                        "Snowy"
+                    ]
+                },
+                {
+                    "Sound": "Skyrim.esm|3FC70",
+                    "Chance": 1.0,
+                    "Flags": [
+                        "Pleasant",
+                        "Cloudy",
+                        "Rainy",
+                        "Snowy"
+                    ]
+                }
+            ]
+        }
+    ]
+}
