@@ -2,7 +2,43 @@
 
 #include "FormUtil.h"
 
-std::string currentFilename = "";
+void DataStorage::InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field)
+{
+	if (a_conflicts.contains(a_field)) {
+		auto& conflictField = a_conflicts[a_field];
+		conflictField.emplace_back(currentFilename);
+	} else {
+		std::list<std::string> conflictField;
+		conflictField.emplace_back(currentFilename);
+		a_conflicts.insert({ a_field, conflictField });
+	}
+}
+
+void DataStorage::InsertConflictInformationRegions(RE::TESForm* a_region, RE::TESForm* a_sound, std::list<std::string> a_fields)
+{
+	if (!conflictMapRegions.contains(a_region)) {
+		std::unordered_map<RE::TESForm*, std::unordered_map<std::string, std::list<std::string>>> insertMap;
+		conflictMapRegions[a_region] = insertMap;
+	}
+
+	if (!conflictMapRegions[a_region].contains(a_sound)) {
+		std::unordered_map<std::string, std::list<std::string>> insertMap;
+		conflictMapRegions[a_region][a_sound] = insertMap;
+	}
+	for (auto field : a_fields)
+		InsertConflictField(conflictMapRegions[a_region][a_sound], field);
+}
+
+void DataStorage::InsertConflictInformation(RE::TESForm* a_form, std::list<std::string> a_fields)
+{
+	if (!conflictMap.contains(a_form)) {
+		std::unordered_map<std::string, std::list<std::string>> insertMap;
+		conflictMap[a_form] = insertMap;
+	}
+
+	for (auto field : a_fields)
+		InsertConflictField(conflictMap[a_form], field);
+}
 
 void DataStorage::LoadConfigs()
 {
@@ -11,7 +47,7 @@ void DataStorage::LoadConfigs()
 	auto constexpr folder = R"(Data\)"sv;
 	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
 		if (entry.exists() && !entry.path().empty() && (entry.path().extension() == ".json"sv || entry.path().extension() == ".jsonc"sv)) {
-			const auto path = entry.path().string(); 
+			const auto path = entry.path().string();
 			const auto filename = entry.path().filename().string();
 			auto lastindex = filename.find_last_of(".");
 			auto rawname = filename.substr(0, lastindex);
@@ -28,7 +64,6 @@ void DataStorage::LoadConfigs()
 
 	for (auto& file : RE::TESDataHandler::GetSingleton()->files) {
 		auto pluginname = file->GetFilename();
-
 		std::set<std::string> pluginconfigs;
 		for (const auto& config : allpluginconfigs) {
 			auto filename = std::filesystem::path(config).filename().string();
@@ -38,11 +73,40 @@ void DataStorage::LoadConfigs()
 				pluginconfigs.insert(config);
 			}
 		}
-
 		ParseConfigs(pluginconfigs);
 	}
-
 	ParseConfigs(configs);
+
+	for (auto& [region, conflictMapRegionsSounds] : conflictMapRegions) {
+		if (conflictMapRegionsSounds.size() > 0) {
+			logger::info("{}", FormUtil::GetIdentifierFromForm(region));
+			for (auto& [sound, conflictInformation] : conflictMapRegionsSounds) {
+				if (conflictInformation.size() > 0) {
+					logger::info("	{}", FormUtil::GetIdentifierFromForm(sound));
+					for (auto& [field, files] : conflictInformation) {
+						logger::info("		{}", field);
+						std::string filesString = "";
+						for (auto file : files) {
+							logger::info("			{}", file);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for (auto& [form, conflictInformation] : conflictMap) {
+		if (conflictInformation.size() > 0) {
+			logger::info("{}", FormUtil::GetIdentifierFromForm(form));
+			for (auto& [field, files] : conflictInformation) {
+				logger::info("	{}", field);
+				std::string filesString = "";
+				for (auto file : files) {
+					logger::info("	{}", file);
+				}
+			}
+		}
+	}
 }
 
 void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
@@ -79,7 +143,7 @@ T* LookupFormID(std::string a_identifier)
 }
 
 template <typename T>
-T* LookupEditorID(std::string a_editorID)
+T* DataStorage::LookupEditorID(std::string a_editorID)
 {
 	auto form = RE::TESForm::LookupByEditorID(a_editorID);
 	if (form)
@@ -88,7 +152,7 @@ T* LookupEditorID(std::string a_editorID)
 }
 
 template <typename T>
-T* LookupFormString(std::string a_string)
+T* DataStorage::LookupFormString(std::string a_string)
 {
 	if (a_string.contains(".es") && a_string.contains("|")) {
 		return LookupFormID<T>(a_string);
@@ -97,7 +161,7 @@ T* LookupFormString(std::string a_string)
 }
 
 template <typename T>
-T* LookupForm(json& a_record)
+T* DataStorage::LookupForm(json& a_record)
 {
 	try {
 		auto ret = LookupFormString<T>(a_record["Form"]);
@@ -184,20 +248,27 @@ void DataStorage::RunConfig(json& a_jsonData)
 					for (auto rdsa : record["RDSA"]) {
 						if (rdsa["Sound"] != nullptr; auto sound = LookupFormString<RE::BGSSoundDescriptorForm>(rdsa["Sound"])) {
 							bool created;
+							std::list<std::string> changes;
 							auto soundRecord = GetOrCreateSound(created, regionDataEntry->sounds, sound);
 							soundRecord->sound = sound;
 
-							if (rdsa["Flags"] != nullptr)
+							if (rdsa["Flags"] != nullptr) {
 								soundRecord->flags = GetSoundFlags(rdsa["Flags"]);
-							else if (created)
+								changes.emplace_back("Flags");
+							} else if (created) {
 								soundRecord->flags = GetSoundFlags({ "Pleasant", "Cloudy", "Rainy", "Snowy" });
-
-							if (rdsa["Chance"] != nullptr)
+								changes.emplace_back("Flags");
+							}
+							if (rdsa["Chance"] != nullptr) {
 								soundRecord->chance = rdsa["Chance"];
-							else if (created)
+								changes.emplace_back("Chance");
+							} else if (created) {
 								soundRecord->chance = 0.05f;
+								changes.emplace_back("Chance");
+							}
 
 							regionDataEntry->sounds.emplace_back(soundRecord);
+							InsertConflictInformationRegions(regn, sound, changes);
 						}
 					}
 				} else {
@@ -210,45 +281,60 @@ void DataStorage::RunConfig(json& a_jsonData)
 
 		for (auto& record : a_jsonData["Weapon"]) {
 			if (auto weap = LookupForm<RE::TESObjectWEAP>(record)) {
-				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"]))
+				std::list<std::string> changes;
+				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
 					weap->pickupSound = ynam;
-
-				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"]))
+					changes.emplace_back("Pick Up");
+				}
+				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
 					weap->putdownSound = znam;
-
-				if (record["Impact Data Set"] != nullptr; auto inam = LookupFormString<RE::BGSImpactDataSet>(record["Impact Data Set"]))
+					changes.emplace_back("Put Down");
+				}
+				if (record["Impact Data Set"] != nullptr; auto inam = LookupFormString<RE::BGSImpactDataSet>(record["Impact Data Set"])) {
 					weap->impactDataSet = inam;
-
-				if (record["Attack"] != nullptr; auto snam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack"]))
+					changes.emplace_back("Impact Data Set");
+				}
+				if (record["Attack"] != nullptr; auto snam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack"])) {
 					weap->attackSound = snam;
-
-				if (record["Attack 2D"] != nullptr; auto xnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack 2D"]))
+					changes.emplace_back("Attack");
+				}
+				if (record["Attack 2D"] != nullptr; auto xnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack 2D"])) {
 					weap->attackSound2D = xnam;
-
-				if (record["Attack Loop"] != nullptr; auto nam7 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack Loop"]))
+					changes.emplace_back("Attack 2D");
+				}
+				if (record["Attack Loop"] != nullptr; auto nam7 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack Loop"])) {
 					weap->attackLoopSound = nam7;
-
-				if (record["Attack Fail"] != nullptr; auto tnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Idle"]))
+					changes.emplace_back("Attack Loop");
+				}
+				if (record["Attack Fail"] != nullptr; auto tnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Idle"])) {
 					weap->attackFailSound = tnam;
-
-				if (record["Idle"] != nullptr; auto unam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"]))
+					changes.emplace_back("Attack Fail");
+				}
+				if (record["Idle"] != nullptr; auto unam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"])) {
 					weap->idleSound = unam;
-
-				if (record["Equip"] != nullptr; auto nam9 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Equip"]))
+					changes.emplace_back("Idle");
+				}
+				if (record["Equip"] != nullptr; auto nam9 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Equip"])) {
 					weap->equipSound = nam9;
-
-				if (record["Unequp"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"]))
+					changes.emplace_back("Equip");
+				}
+				if (record["Unequp"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"])) {
 					weap->unequipSound = nam8;
+					changes.emplace_back("Unequp");
+				}
+				InsertConflictInformation(weap, changes);
 			}
 		}
 
 		for (auto& record : a_jsonData["Magic Effect"]) {
 			if (auto mgef = LookupForm<RE::EffectSetting>(record)) {
+				std::list<std::string> changes;
 				RE::BGSSoundDescriptorForm* slots[6];
 
 				for (int i = 0; i < 6; i++) {
 					auto soundID = std::string(magic_enum::enum_name((RE::MagicSystem::SoundID)i));
 					soundID = soundID.substr(1, soundID.length() - 1);
+					changes.emplace_back(soundID);
 					slots[i] = record[soundID] ? LookupForm<RE::BGSSoundDescriptorForm>(record[soundID]) : nullptr;
 				}
 
@@ -270,47 +356,63 @@ void DataStorage::RunConfig(json& a_jsonData)
 						mgef->effectSounds.emplace_back(soundPair);
 					}
 				}
+				InsertConflictInformation(mgef, changes);
 			}
 		}
 
 		for (auto& record : a_jsonData["Armor Addon"]) {
 			if (auto arma = LookupForm<RE::TESObjectARMA>(record)) {
+				std::list<std::string> changes;
 				if (record["Footstep"] != nullptr; auto sndd = LookupFormString<RE::BGSFootstepSet>(record["Footstep"])) {
 					arma->footstepSet = sndd;
+					changes.emplace_back("Footstep");
 				}
+				InsertConflictInformation(arma, changes);
 			}
 		}
 
 		for (auto& record : a_jsonData["Armor"]) {
 			if (auto armo = LookupForm<RE::TESObjectARMO>(record)) {
+				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
 					armo->pickupSound = ynam;
+					changes.emplace_back("Pick Up");
 				}
 				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
 					armo->putdownSound = znam;
+					changes.emplace_back("Put Down");
 				}
+				InsertConflictInformation(armo, changes);
 			}
 		}
 
 		for (auto& record : a_jsonData["Misc. Item"]) {
 			if (auto misc = LookupForm<RE::TESObjectMISC>(record)) {
+				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
 					misc->pickupSound = ynam;
+					changes.emplace_back("Pick Up");
 				}
 				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
 					misc->putdownSound = znam;
+					changes.emplace_back("Put Down");
 				}
+				InsertConflictInformation(misc, changes);
 			}
 		}
 
 		for (auto& record : a_jsonData["Soul Gem"]) {
 			if (auto slgm = LookupForm<RE::TESSoulGem>(record)) {
+				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
 					slgm->pickupSound = ynam;
+					changes.emplace_back("Pick Up");
 				}
 				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
 					slgm->putdownSound = znam;
+					changes.emplace_back("Put Down");
 				}
+				InsertConflictInformation(slgm, changes);
 			}
 		}
 	}
