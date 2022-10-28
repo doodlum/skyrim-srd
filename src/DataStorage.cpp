@@ -53,7 +53,7 @@ void DataStorage::LoadConfigs()
 			const auto filename = entry.path().filename().string();
 			auto lastindex = filename.find_last_of(".");
 			auto rawname = filename.substr(0, lastindex);
-			if (rawname.ends_with("_SIF")) {
+			if (rawname.ends_with("_SRD")) {
 				const auto path = entry.path().string();
 				if (rawname.contains(".es")) {
 					allpluginconfigs.insert(path);
@@ -350,9 +350,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 					weap->equipSound = nam9;
 					changes.emplace_back("Equip");
 				}
-				if (record["Unequp"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"])) {
+				if (record["Unequip"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"])) {
 					weap->unequipSound = nam8;
-					changes.emplace_back("Unequp");
+					changes.emplace_back("Unequip");
 				}
 				InsertConflictInformation(weap, changes);
 			}
