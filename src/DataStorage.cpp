@@ -94,11 +94,11 @@ void DataStorage::LoadConfigs()
 				if (conflictInformation.size() > 0) {
 					logger::info("	{}", FormUtil::GetIdentifierFromForm(sound));
 					for (auto& [field, files] : conflictInformation) {
-						logger::info("		{}", field);
 						std::string filesString = "";
 						for (auto file : files) {
-							logger::info("			{}", file);
+							filesString = " -> " + filesString + file;
 						}
+						logger::info("		{} {}", field, filesString);
 					}
 				}
 			}
@@ -109,11 +109,11 @@ void DataStorage::LoadConfigs()
 		if (conflictInformation.size() > 0) {
 			logger::info("\n{}", FormUtil::GetIdentifierFromForm(form));
 			for (auto& [field, files] : conflictInformation) {
-				logger::info("	{}", field);
 				std::string filesString = "";
 				for (auto file : files) {
-					logger::info("	{}", file);
+					filesString = " -> " + filesString + file;
 				}
+				logger::info("	{} {}", field, filesString);
 			}
 		}
 	}
@@ -234,13 +234,7 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 bool DataStorage::IsModLoaded(std::string a_modname)
 {
 	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
-	if (a_modname.ends_with(".esl")) {
-		if (dataHandler->GetLoadedLightModIndex(a_modname))
-			return true;
-	} else if (dataHandler->GetLoadedModIndex(a_modname)) {
-		return true;
-	}
-	return false;
+	return dataHandler->GetLoadedModIndex(a_modname) || dataHandler->GetLoadedLightModIndex(a_modname);
 }
 
 void DataStorage::RunConfig(json& a_jsonData)
@@ -338,11 +332,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 					weap->attackLoopSound = nam7;
 					changes.emplace_back("Attack Loop");
 				}
-				if (record["Attack Fail"] != nullptr; auto tnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Idle"])) {
+				if (record["Attack Fail"] != nullptr; auto tnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack Fail"])) {
 					weap->attackFailSound = tnam;
 					changes.emplace_back("Attack Fail");
 				}
-				if (record["Idle"] != nullptr; auto unam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"])) {
+				if (record["Idle"] != nullptr; auto unam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Idle"])) {
 					weap->idleSound = unam;
 					changes.emplace_back("Idle");
 				}
@@ -350,7 +344,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 					weap->equipSound = nam9;
 					changes.emplace_back("Equip");
 				}
-				if (record["Unequip"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequp"])) {
+				if (record["Unequip"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequip"])) {
 					weap->unequipSound = nam8;
 					changes.emplace_back("Unequip");
 				}
@@ -366,8 +360,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 				for (int i = 0; i < 6; i++) {
 					auto soundID = std::string(magic_enum::enum_name((RE::MagicSystem::SoundID)i));
 					soundID = soundID.substr(1, soundID.length() - 1);
-					changes.emplace_back(soundID);
-					slots[i] = record[soundID] ? LookupForm<RE::BGSSoundDescriptorForm>(record[soundID]) : nullptr;
+					slots[i] = record[soundID] != nullptr ? LookupFormString<RE::BGSSoundDescriptorForm>(record[soundID]) : nullptr;
+					if (slots[i])
+						changes.emplace_back(soundID);
 				}
 
 				stl::enumeration<RE::MagicSystem::SoundID, std::uint32_t> found;
