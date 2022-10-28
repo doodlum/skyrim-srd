@@ -178,7 +178,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 	}
 	for (auto& record : a_jsonData["Weapon"]) {
 		if (auto weap = LookupForm<RE::TESObjectWEAP>(record)) {
-			if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"]))
+			if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) 
 				weap->pickupSound = ynam;
 
 			if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"]))
@@ -231,16 +231,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 
 			for (int i = 0; i < 6; i++) {
 				if (slots[i]) {
-					//auto soundPair = new RE::EffectSetting::SoundPair;
-					//soundPair->id = (RE::MagicSystem::SoundID)i;
-					//soundPair->sound = slots[i];
-					//soundPair->pad04 = 0;
-					//mgef->effectSounds.emplace_back(soundPair);
-					auto soundID = std::string(magic_enum::enum_name((RE::MagicSystem::SoundID)i));
-					soundID = soundID.substr(1, soundID.length() - 1);
-					std::string errorMessage = std::format("Could not replace {} in {} {:X}", soundID, mgef->GetFormEditorID(), mgef->formID);
-					logger::error("{}", errorMessage);
-					RE::DebugMessageBox(errorMessage.c_str());
+					RE::EffectSetting::SoundPair soundPair;
+					soundPair.id = (RE::MagicSystem::SoundID)i;
+					soundPair.sound = slots[i];
+					soundPair.pad04 = 0;
+					mgef->effectSounds.emplace_back(soundPair);
 				}
 			}
 		}
