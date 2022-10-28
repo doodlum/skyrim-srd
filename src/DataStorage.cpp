@@ -12,7 +12,7 @@ void DataStorage::LoadConfigs()
 			const auto filename = entry.path().filename().string();
 			auto lastindex = filename.find_last_of(".");
 			auto rawname = filename.substr(0, lastindex);
-			if (rawname.ends_with("_SIF") && !rawname.contains(".esm") && !rawname.contains(".esp") && !rawname.contains(".esl")) {
+			if (rawname.ends_with("_SIF") && !rawname.contains(".es")) {
 				const auto path = entry.path().string();
 				configs.insert(path);
 			}
