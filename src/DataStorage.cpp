@@ -2,6 +2,8 @@
 
 #include "FormUtil.h"
 
+std::string currentFilename = "";
+
 void DataStorage::LoadConfigs()
 {
 	std::set<std::string> configs;
@@ -48,6 +50,7 @@ void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
 	for (auto config : a_configs) {
 		auto filename = std::filesystem::path(config).filename().string();
 		logger::info("Parsing {}", filename);
+		currentFilename = filename;
 		try {
 			std::ifstream i(config);
 			if (i.good()) {
@@ -96,8 +99,20 @@ T* LookupFormString(std::string a_string)
 template <typename T>
 T* LookupForm(json& a_record)
 {
-	if (a_record["Form"] != nullptr) {
-		return LookupFormString<T>(a_record["Form"]);
+	try {
+		auto ret = LookupFormString<T>(a_record["Form"]);
+		if (!ret) {
+			std::string identifier = a_record["Form"];
+			std::string name = typeid(T).name();
+			std::string errorMessage = std::format("Form {} of type {} does not exist in {}", identifier, name, currentFilename);
+			logger::error("{}", errorMessage);
+			RE::DebugMessageBox(errorMessage.c_str());
+		}
+		return ret;
+	} catch (const std::exception& exc) {
+		std::string errorMessage = std::format("Failed to parse entry in {}\n{}", currentFilename, exc.what());
+		logger::error("{}", errorMessage);
+		RE::DebugMessageBox(errorMessage.c_str());
 	}
 	return nullptr;
 }
