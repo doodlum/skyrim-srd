@@ -142,7 +142,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 			if (regionDataEntry) {
 				for (auto rdsa : record["RDSA"]) {
-					if (rdsa["Sound"]; auto sound = LookupFormID<RE::BGSSoundDescriptorForm>(rdsa["Sound"])) {
+					if (rdsa["Sound"] != nullptr; auto sound = LookupFormID<RE::BGSSoundDescriptorForm>(rdsa["Sound"])) {
 						bool created;
 						auto soundRecord = GetOrCreateSound(created, regionDataEntry->sounds, sound);
 						soundRecord->sound = sound;
