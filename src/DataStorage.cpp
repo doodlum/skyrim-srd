@@ -178,13 +178,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 	}
 	for (auto& record : a_jsonData["Weapon"]) {
 		if (auto weap = LookupForm<RE::TESObjectWEAP>(record)) {
-			if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
+			if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"]))
 				weap->pickupSound = ynam;
-			}
 
-			if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
+			if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"]))
 				weap->putdownSound = znam;
-			}
 
 			if (record["Impact Data Set"] != nullptr; auto inam = LookupFormString<RE::BGSImpactDataSet>(record["Impact Data Set"]))
 				weap->impactDataSet = inam;
