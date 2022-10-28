@@ -42,6 +42,8 @@ void DataStorage::InsertConflictInformation(RE::TESForm* a_form, std::list<std::
 
 void DataStorage::LoadConfigs()
 {
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
 	std::set<std::string> configs;
 	std::set<std::string> allpluginconfigs;
 	auto constexpr folder = R"(Data\)"sv;
@@ -62,6 +64,10 @@ void DataStorage::LoadConfigs()
 		}
 	}
 
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	logger::info("\nSearched files in {} milliseconds\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+	begin = std::chrono::steady_clock::now();
+
 	for (auto& file : RE::TESDataHandler::GetSingleton()->files) {
 		auto pluginname = file->GetFilename();
 		std::set<std::string> pluginconfigs;
@@ -77,9 +83,13 @@ void DataStorage::LoadConfigs()
 	}
 	ParseConfigs(configs);
 
+	end = std::chrono::steady_clock::now();
+	logger::info("\nParsed configs in {} milliseconds", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+	begin = std::chrono::steady_clock::now();
+
 	for (auto& [region, conflictMapRegionsSounds] : conflictMapRegions) {
 		if (conflictMapRegionsSounds.size() > 0) {
-			logger::info("{}", FormUtil::GetIdentifierFromForm(region));
+			logger::info("\n{}", FormUtil::GetIdentifierFromForm(region));
 			for (auto& [sound, conflictInformation] : conflictMapRegionsSounds) {
 				if (conflictInformation.size() > 0) {
 					logger::info("	{}", FormUtil::GetIdentifierFromForm(sound));
@@ -97,7 +107,7 @@ void DataStorage::LoadConfigs()
 
 	for (auto& [form, conflictInformation] : conflictMap) {
 		if (conflictInformation.size() > 0) {
-			logger::info("{}", FormUtil::GetIdentifierFromForm(form));
+			logger::info("\n{}", FormUtil::GetIdentifierFromForm(form));
 			for (auto& [field, files] : conflictInformation) {
 				logger::info("	{}", field);
 				std::string filesString = "";
@@ -107,6 +117,9 @@ void DataStorage::LoadConfigs()
 			}
 		}
 	}
+
+	end = std::chrono::steady_clock::now();
+	logger::info("\nPrinted conflicts in {} milliseconds\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
 }
 
 void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
@@ -119,6 +132,7 @@ void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
 			std::ifstream i(config);
 			if (i.good()) {
 				json data = json::parse(i, nullptr, true, true);
+				i.close();
 				RunConfig(data);
 			} else {
 				std::string errorMessage = std::format("Failed to parse {}\nBad file stream", filename);
@@ -226,10 +240,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 		std::string modname = record;
 		if (modname.ends_with(".esl")) {
 			if (dataHandler->GetLoadedLightModIndex(modname))
-				break;
+				continue;
 		} else if (dataHandler->GetLoadedModIndex(modname)) {
-			break;
+			continue;
 		}
+		logger::info("	Missing requirement {}", modname);
 		load = false;
 	}
 
