@@ -25,7 +25,7 @@ void InitializeLog()
 		util::report_and_fail("Failed to find standard logging directory"sv);
 	}
 
-	*path /= fmt::format("log"sv, Plugin::NAME);
+	*path /= std::format("{}.log"sv, Plugin::NAME);
 	auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
 #endif
 
@@ -40,7 +40,7 @@ void InitializeLog()
 	log->flush_on(level);
 
 	spdlog::set_default_logger(std::move(log));
-	spdlog::set_pattern("%v"s);
+	spdlog::set_pattern("%v");
 }
 
 EXTERN_C [[maybe_unused]] __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
