@@ -182,7 +182,7 @@ T* DataStorage::LookupForm(json& a_record)
 		if (!ret) {
 			std::string identifier = a_record["Form"];
 			std::string name = typeid(T).name();
-			std::string errorMessage = std::format("Form {} of type {} does not exist in {}", identifier, name, currentFilename);
+			std::string errorMessage = std::format("Form {} of {} does not exist in {}", identifier, name, currentFilename);
 			logger::error("{}", errorMessage);
 			RE::DebugMessageBox(errorMessage.c_str());
 		}
@@ -234,6 +234,14 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 bool DataStorage::IsModLoaded(std::string a_modname)
 {
 	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
+	if (REL::Module::IsVR()) {
+		auto& files = dataHandler->files;
+		for (const auto file : files) {
+			if (file->GetFilename() == a_modname && file->GetCompileIndex() != 255)
+				return true;
+		}
+		return false;
+	}
 	return dataHandler->GetLoadedModIndex(a_modname) || dataHandler->GetLoadedLightModIndex(a_modname);
 }
 
