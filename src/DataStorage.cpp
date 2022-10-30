@@ -273,7 +273,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 				RE::TESRegionDataSound* regionDataEntry = nullptr;
 				for (auto entry : regn->dataList->regionDataList) {
 					if (entry->GetType() == RE::TESRegionData::Type::kSound) {
-						const auto regionDataManager = REL::Module::IsVR() ? reinterpret_cast<RE::TESRegionDataManager**>((char*)dataHandler + 0x1580) : dataHandler->regionDataManager;
+						const auto regionDataManager = REL::Module::IsVR() ? reinterpret_cast<RE::TESRegionDataManager**>((char*)dataHandler + 0x1580) : &dataHandler->regionDataManager;
 						if (regionDataManager)
 							regionDataEntry = (*regionDataManager)->AsRegionDataSound(entry);
 						if (regionDataEntry)
