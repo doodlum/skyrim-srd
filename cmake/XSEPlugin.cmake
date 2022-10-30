@@ -133,9 +133,8 @@ if (CMAKE_GENERATOR MATCHES "Visual Studio")
 endif()
 
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
-
 
 if (BUILD_SKYRIM)
 	find_package(CommonLibSSE REQUIRED)
@@ -145,8 +144,9 @@ if (BUILD_SKYRIM)
 			CommonLibSSE::CommonLibSSE
 		PRIVATE
 			nlohmann_json::nlohmann_json
+			yaml-cpp
 			magic_enum::magic_enum
-			glm::glm
+		
 	)
 else()
 	add_subdirectory(${CommonLibPath} ${CommonLibName} EXCLUDE_FROM_ALL)

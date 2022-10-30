@@ -12,9 +12,8 @@
             "dependencies": [
                 "commonlibsse-ng",
                 "nlohmann-json",
-                "simpleini",
-                "magic-enum",
-                "glm"
+                "yaml-cpp",
+                "magic-enum"
             ]
         }
     },

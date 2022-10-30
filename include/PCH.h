@@ -23,21 +23,6 @@
 #endif
 #endif
 
-
-#define RELOCATION_OFFSET(SE, AE) REL::VariantOffset(SE, AE, 0).offset()
-#define RELOCATION_OFFSET2(SE, AE, AE629) REL::VariantOffset(SE, REL::Module::get().version().compare(SKSE::RUNTIME_SSE_1_6_629) == std::strong_ordering::less ? AE : AE629, 0).offset()
-
-
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/easing.hpp>
-#include <glm/gtx/hash.hpp>
-#include <glm/gtx/norm.hpp>
-#include <glm/gtx/spline.hpp>
-
 #define MAGIC_ENUM_RANGE_MAX 256
 #include <magic_enum.hpp>
 
