@@ -273,7 +273,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 				RE::TESRegionDataSound* regionDataEntry = nullptr;
 				for (auto entry : regn->dataList->regionDataList) {
 					if (entry->GetType() == RE::TESRegionData::Type::kSound) {
-						regionDataEntry = dataHandler->regionDataManager->AsRegionDataSound(entry);
+						const auto regionDataManager = REL::Module::IsVR() ? reinterpret_cast<RE::TESRegionDataManager**>((char*)dataHandler + 0x1580) : dataHandler->regionDataManager;
+						if (regionDataManager)
+							regionDataEntry = (*regionDataManager)->AsRegionDataSound(entry);
 						if (regionDataEntry)
 							break;
 					}
@@ -306,7 +308,8 @@ void DataStorage::RunConfig(json& a_jsonData)
 						}
 					}
 				} else {
-					std::string errorMessage = std::format("RDSA entry does not exist in form {} {:X}", regn->GetFormEditorID(), regn->formID);
+					const auto filename = regn->GetDescriptionOwnerFile() ? regn->GetDescriptionOwnerFile()->GetFilename() : ""sv;
+					std::string errorMessage = std::format("RDSA entry {} does not exist in form {} {} {:X}", record["Form"].get<std::string>(), regn->GetFormEditorID(), filename, regn->formID);
 					logger::error("{}", errorMessage);
 					RE::DebugMessageBox(errorMessage.c_str());
 				}
