@@ -63,7 +63,8 @@ EXTERN_C [[maybe_unused]] __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(con
 
 	InitializeLog();
 
-	logger::info("Loaded plugin");
+	logger::info(("{} v{}"), Plugin::NAME, Plugin::VERSION);
+	logger::info("Game version : {}", a_skse->RuntimeVersion().string());
 
 	SKSE::Init(a_skse);
 
