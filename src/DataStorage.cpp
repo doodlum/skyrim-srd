@@ -9,7 +9,7 @@ bool DataStorage::IsModLoaded(std::string_view a_modname)
 	if (REL::Module::IsVR()) {
 		auto& files = dataHandler->files;
 		for (const auto file : files) {
-			if (file->GetFilename() == a_modname && file->GetCompileIndex() != 255)
+			if (file->GetFilename() == a_modname && ((g_mergeMapperInterface) || file->GetCompileIndex() != 255)) // merged mods, will be index 255.
 				return true;
 		}
 		return false;
@@ -284,7 +284,6 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 	auto soundRecord = new RE::TESRegionDataSound::Sound;
 	return a_sounds.emplace_back(soundRecord);
 }
-
 
 
 void DataStorage::RunConfig(json& a_jsonData)
