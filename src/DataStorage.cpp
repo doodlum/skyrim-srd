@@ -1,6 +1,7 @@
 #include "DataStorage.h"
 
 #include "FormUtil.h"
+#include "tojson.hpp"
 
 void DataStorage::InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field)
 {
@@ -48,7 +49,7 @@ void DataStorage::LoadConfigs()
 	std::set<std::string> allpluginconfigs;
 	auto constexpr folder = R"(Data\)"sv;
 	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
-		if (entry.exists() && !entry.path().empty() && (entry.path().extension() == ".json"sv || entry.path().extension() == ".jsonc"sv)) {
+		if (entry.exists() && !entry.path().empty() && (entry.path().extension() == ".json"sv || entry.path().extension() == ".jsonc"sv || entry.path().extension() == ".yaml"sv)){
 			const auto path = entry.path().string();
 			const auto filename = entry.path().filename().string();
 			auto lastindex = filename.find_last_of(".");
@@ -125,13 +126,27 @@ void DataStorage::LoadConfigs()
 void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
 {
 	for (auto config : a_configs) {
-		auto filename = std::filesystem::path(config).filename().string();
+		auto path = std::filesystem::path(config).filename();
+		auto filename = path.string();
 		logger::info("Parsing {}", filename);
 		currentFilename = filename;
 		try {
 			std::ifstream i(config);
 			if (i.good()) {
-				json data = json::parse(i, nullptr, true, true);
+				json data;
+				if (path.extension() == ".yaml"sv) {
+					try {
+						logger::info("Converting {} to JSON object", filename);
+						data = tojson::loadyaml(config);
+					} catch (const std::exception& exc){
+						std::string errorMessage = std::format("Failed to convert {} to JSON object\n{}", filename, exc.what());
+						logger::error("{}", errorMessage);
+						RE::DebugMessageBox(errorMessage.c_str());
+						continue;
+					}
+				} else {
+					data = json::parse(i, nullptr, true, true);
+				}
 				i.close();
 				RunConfig(data);
 			} else {
@@ -193,6 +208,17 @@ T* DataStorage::LookupForm(json& a_record)
 		RE::DebugMessageBox(errorMessage.c_str());
 	}
 	return nullptr;
+}
+
+std::list<std::string> split(const std::string s, char delim)
+{
+	std::list<std::string> result;
+	std::stringstream ss(s);
+	std::string item;
+	while (std::getline(ss, item, delim)) {
+		result.push_back(item);
+	}
+	return result;
 }
 
 stl::enumeration<RE::TESRegionDataSound::Sound::Flag, std::uint32_t> DataStorage::GetSoundFlags(std::list<std::string> a_flagsList)
@@ -268,7 +294,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 	}
 
 	if (load) {
-		for (auto& record : a_jsonData["Region"]) {
+		for (auto& record : a_jsonData["Regions"]) {
 			if (auto regn = LookupForm<RE::TESRegion>(record)) {
 				RE::TESRegionDataSound* regionDataEntry = nullptr;
 				for (auto entry : regn->dataList->regionDataList) {
@@ -289,7 +315,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 							soundRecord->sound = sound;
 
 							if (rdsa["Flags"] != nullptr) {
-								soundRecord->flags = GetSoundFlags(rdsa["Flags"]);
+								soundRecord->flags = GetSoundFlags(split(rdsa["Flags"], ' '));
 								changes.emplace_back("Flags");
 							} else if (created) {
 								soundRecord->flags = GetSoundFlags({ "Pleasant", "Cloudy", "Rainy", "Snowy" });
@@ -316,7 +342,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 		}
 
-		for (auto& record : a_jsonData["Weapon"]) {
+		for (auto& record : a_jsonData["Weapons"]) {
 			if (auto weap = LookupForm<RE::TESObjectWEAP>(record)) {
 				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
@@ -363,7 +389,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 		}
 
-		for (auto& record : a_jsonData["Magic Effect"]) {
+		for (auto& record : a_jsonData["Magic Effects"]) {
 			if (auto mgef = LookupForm<RE::EffectSetting>(record)) {
 				std::list<std::string> changes;
 				RE::BGSSoundDescriptorForm* slots[6];
@@ -398,7 +424,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 		}
 
-		for (auto& record : a_jsonData["Armor Addon"]) {
+		for (auto& record : a_jsonData["Armor Addons"]) {
 			if (auto arma = LookupForm<RE::TESObjectARMA>(record)) {
 				std::list<std::string> changes;
 				if (record["Footstep"] != nullptr; auto sndd = LookupFormString<RE::BGSFootstepSet>(record["Footstep"])) {
@@ -409,7 +435,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 		}
 
-		for (auto& record : a_jsonData["Armor"]) {
+		for (auto& record : a_jsonData["Armors"]) {
 			if (auto armo = LookupForm<RE::TESObjectARMO>(record)) {
 				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
@@ -424,7 +450,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 		}
 
-		for (auto& record : a_jsonData["Misc. Item"]) {
+		for (auto& record : a_jsonData["Misc. Items"]) {
 			if (auto misc = LookupForm<RE::TESObjectMISC>(record)) {
 				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
@@ -439,7 +465,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 			}
 		}
 
-		for (auto& record : a_jsonData["Soul Gem"]) {
+		for (auto& record : a_jsonData["Soul Gems"]) {
 			if (auto slgm = LookupForm<RE::TESSoulGem>(record)) {
 				std::list<std::string> changes;
 				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {

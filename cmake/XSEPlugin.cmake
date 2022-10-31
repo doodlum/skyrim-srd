@@ -132,8 +132,9 @@ if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	)
 endif()
 
-find_package(nlohmann_json CONFIG REQUIRED)
+find_path(RAPIDXML_INCLUDE_DIRS "rapidxml/rapidxml.hpp")
 find_package(yaml-cpp CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 
 if (BUILD_SKYRIM)
@@ -144,9 +145,9 @@ if (BUILD_SKYRIM)
 			CommonLibSSE::CommonLibSSE
 		PRIVATE
 			nlohmann_json::nlohmann_json
+			${RAPIDXML_INCLUDE_DIRS}	
 			yaml-cpp
 			magic_enum::magic_enum
-		
 	)
 else()
 	add_subdirectory(${CommonLibPath} ${CommonLibName} EXCLUDE_FROM_ALL)

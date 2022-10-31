@@ -11,8 +11,9 @@
             "description": "Build the SKSE plugin.",
             "dependencies": [
                 "commonlibsse-ng",
-                "nlohmann-json",
+                "rapidxml",
                 "yaml-cpp",
+                "nlohmann-json",
                 "magic-enum"
             ]
         }
