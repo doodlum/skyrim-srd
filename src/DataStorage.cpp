@@ -112,7 +112,7 @@ void DataStorage::LoadConfigs()
 			for (auto& [field, files] : conflictInformation) {
 				std::string filesString = "";
 				for (auto file : files) {
-					filesString = " -> " + filesString + file;
+					filesString = filesString + " -> " + file;
 				}
 				logger::info("	{} {}", field, filesString);
 			}
