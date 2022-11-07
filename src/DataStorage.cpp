@@ -3,6 +3,20 @@
 #include "FormUtil.h"
 #include "tojson.hpp"
 
+bool DataStorage::IsModLoaded(std::string_view a_modname)
+{
+	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
+	if (REL::Module::IsVR()) {
+		auto& files = dataHandler->files;
+		for (const auto file : files) {
+			if (file->GetFilename() == a_modname && file->GetCompileIndex() != 255)
+				return true;
+		}
+		return false;
+	}
+	return dataHandler->GetLoadedModIndex(a_modname) || dataHandler->GetLoadedLightModIndex(a_modname);
+}
+
 void DataStorage::InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field)
 {
 	if (a_conflicts.contains(a_field)) {
@@ -71,16 +85,18 @@ void DataStorage::LoadConfigs()
 
 	for (auto& file : RE::TESDataHandler::GetSingleton()->files) {
 		auto pluginname = file->GetFilename();
-		std::set<std::string> pluginconfigs;
-		for (const auto& config : allpluginconfigs) {
-			auto filename = std::filesystem::path(config).filename().string();
-			auto lastindex = filename.find_last_of(".");
-			auto rawname = filename.substr(0, lastindex);
-			if (filename.rfind(pluginname, 0) == 0) {
-				pluginconfigs.insert(config);
+		if (IsModLoaded(pluginname)) {
+			std::set<std::string> pluginconfigs;
+			for (const auto& config : allpluginconfigs) {
+				auto filename = std::filesystem::path(config).filename().string();
+				auto lastindex = filename.find_last_of(".");
+				auto rawname = filename.substr(0, lastindex);
+				if (filename.rfind(pluginname, 0) == 0) {
+					pluginconfigs.insert(config);
+				}
 			}
+			ParseConfigs(pluginconfigs);
 		}
-		ParseConfigs(pluginconfigs);
 	}
 	ParseConfigs(configs);
 
@@ -97,7 +113,7 @@ void DataStorage::LoadConfigs()
 					for (auto& [field, files] : conflictInformation) {
 						std::string filesString = "";
 						for (auto file : files) {
-							filesString = " -> " + filesString + file;
+							filesString = filesString + " -> " + file;
 						}
 						logger::info("		{} {}", field, filesString);
 					}
@@ -181,14 +197,23 @@ T* DataStorage::LookupEditorID(std::string a_editorID)
 }
 
 template <typename T>
-T* DataStorage::LookupFormString(json& a_record, std::string a_key)
+T* DataStorage::LookupFormString(json& a_record, std::string a_key, bool a_error)
 {
 	if (a_record.contains(a_key)) {
 		std::string formString = a_record[a_key];
+		T* ret;
 		if (formString.contains(".es") && formString.contains("|")) {
-			return LookupFormID<T>(formString);
+			ret = LookupFormID<T>(formString);
+		} else{
+			ret = LookupEditorID<T>(formString);
 		}
-		return LookupEditorID<T>(formString);
+		if (!ret && a_error) {
+			std::string name = typeid(T).name();
+			std::string errorMessage = std::format("Form {} of {} does not exist in {}, this entry may be incomplete", formString, name, currentFilename);
+			logger::error("{}", errorMessage);
+			RE::DebugMessageBox(errorMessage.c_str());
+		}
+		return ret;
 	}
 	return nullptr;
 }
@@ -197,13 +222,12 @@ template <typename T>
 T* DataStorage::LookupForm(json& a_record)
 {
 	try {
-		auto ret = LookupFormString<T>(a_record, "Form");
+		auto ret = LookupFormString<T>(a_record, "Form", false);
 		if (!ret) {
 			std::string identifier = a_record["Form"];
 			std::string name = typeid(T).name();
-			std::string errorMessage = std::format("Form {} of {} does not exist in {}", identifier, name, currentFilename);
-			logger::error("{}", errorMessage);
-			RE::DebugMessageBox(errorMessage.c_str());
+			std::string errorMessage = std::format("Form {} of {} does not exist in {}, skipping entry", identifier, name, currentFilename);
+			logger::warn("{}", errorMessage);
 		}
 		return ret;
 	} catch (const std::exception& exc) {
@@ -261,19 +285,7 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 	return a_sounds.emplace_back(soundRecord);
 }
 
-bool DataStorage::IsModLoaded(std::string a_modname)
-{
-	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
-	if (REL::Module::IsVR()) {
-		auto& files = dataHandler->files;
-		for (const auto file : files) {
-			if (file->GetFilename() == a_modname && file->GetCompileIndex() != 255)
-				return true;
-		}
-		return false;
-	}
-	return dataHandler->GetLoadedModIndex(a_modname) || dataHandler->GetLoadedLightModIndex(a_modname);
-}
+
 
 void DataStorage::RunConfig(json& a_jsonData)
 {
