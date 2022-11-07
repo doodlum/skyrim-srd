@@ -404,7 +404,6 @@ void DataStorage::RunConfig(json& a_jsonData)
 						changes.emplace_back(soundID);
 				}
 
-				stl::enumeration<RE::MagicSystem::SoundID, std::uint32_t> found;
 				for (auto sndd : mgef->effectSounds) {
 					int i = (int)sndd.id;
 					if (slots[i]) {
