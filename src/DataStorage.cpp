@@ -49,7 +49,7 @@ void DataStorage::LoadConfigs()
 	std::set<std::string> allpluginconfigs;
 	auto constexpr folder = R"(Data\)"sv;
 	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
-		if (entry.exists() && !entry.path().empty() && (entry.path().extension() == ".json"sv || entry.path().extension() == ".jsonc"sv || entry.path().extension() == ".yaml"sv)){
+		if (entry.exists() && !entry.path().empty() && (entry.path().extension() == ".json"sv || entry.path().extension() == ".jsonc"sv || entry.path().extension() == ".yaml"sv)) {
 			const auto path = entry.path().string();
 			const auto filename = entry.path().filename().string();
 			auto lastindex = filename.find_last_of(".");
@@ -138,7 +138,7 @@ void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
 					try {
 						logger::info("Converting {} to JSON object", filename);
 						data = tojson::loadyaml(config);
-					} catch (const std::exception& exc){
+					} catch (const std::exception& exc) {
 						std::string errorMessage = std::format("Failed to convert {} to JSON object\n{}", filename, exc.what());
 						logger::error("{}", errorMessage);
 						RE::DebugMessageBox(errorMessage.c_str());
@@ -181,19 +181,23 @@ T* DataStorage::LookupEditorID(std::string a_editorID)
 }
 
 template <typename T>
-T* DataStorage::LookupFormString(std::string a_string)
+T* DataStorage::LookupFormString(json& a_record, std::string a_key)
 {
-	if (a_string.contains(".es") && a_string.contains("|")) {
-		return LookupFormID<T>(a_string);
+	if (a_record.contains(a_key)) {
+		std::string formString = a_record[a_key];
+		if (formString.contains(".es") && formString.contains("|")) {
+			return LookupFormID<T>(formString);
+		}
+		return LookupEditorID<T>(formString);
 	}
-	return LookupEditorID<T>(a_string);
+	return nullptr;
 }
 
 template <typename T>
 T* DataStorage::LookupForm(json& a_record)
 {
 	try {
-		auto ret = LookupFormString<T>(a_record["Form"]);
+		auto ret = LookupFormString<T>(a_record, "Form");
 		if (!ret) {
 			std::string identifier = a_record["Form"];
 			std::string name = typeid(T).name();
@@ -308,27 +312,25 @@ void DataStorage::RunConfig(json& a_jsonData)
 				}
 				if (regionDataEntry) {
 					for (auto rdsa : record["RDSA"]) {
-						if (rdsa["Sound"] != nullptr; auto sound = LookupFormString<RE::BGSSoundDescriptorForm>(rdsa["Sound"])) {
+						if (auto sound = LookupFormString<RE::BGSSoundDescriptorForm>(rdsa, "Sound")) {
 							bool created;
 							std::list<std::string> changes;
 							auto soundRecord = GetOrCreateSound(created, regionDataEntry->sounds, sound);
 							soundRecord->sound = sound;
-
-							if (rdsa["Flags"] != nullptr) {
+							if (rdsa.contains("Flags")) {
 								soundRecord->flags = GetSoundFlags(split(rdsa["Flags"], ' '));
 								changes.emplace_back("Flags");
 							} else if (created) {
 								soundRecord->flags = GetSoundFlags({ "Pleasant", "Cloudy", "Rainy", "Snowy" });
 								changes.emplace_back("Flags");
 							}
-							if (rdsa["Chance"] != nullptr) {
+							if (rdsa.contains("Chance")) {
 								soundRecord->chance = rdsa["Chance"];
 								changes.emplace_back("Chance");
 							} else if (created) {
 								soundRecord->chance = 0.05f;
 								changes.emplace_back("Chance");
 							}
-
 							regionDataEntry->sounds.emplace_back(soundRecord);
 							InsertConflictInformationRegions(regn, sound, changes);
 						}
@@ -345,43 +347,43 @@ void DataStorage::RunConfig(json& a_jsonData)
 		for (auto& record : a_jsonData["Weapons"]) {
 			if (auto weap = LookupForm<RE::TESObjectWEAP>(record)) {
 				std::list<std::string> changes;
-				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
+				if (auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Pick Up")) {
 					weap->pickupSound = ynam;
 					changes.emplace_back("Pick Up");
 				}
-				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
+				if (auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Put Down")) {
 					weap->putdownSound = znam;
 					changes.emplace_back("Put Down");
 				}
-				if (record["Impact Data Set"] != nullptr; auto inam = LookupFormString<RE::BGSImpactDataSet>(record["Impact Data Set"])) {
+				if (auto inam = LookupFormString<RE::BGSImpactDataSet>(record, "Impact Data Set")) {
 					weap->impactDataSet = inam;
 					changes.emplace_back("Impact Data Set");
 				}
-				if (record["Attack"] != nullptr; auto snam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack"])) {
+				if (auto snam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Attack")) {
 					weap->attackSound = snam;
 					changes.emplace_back("Attack");
 				}
-				if (record["Attack 2D"] != nullptr; auto xnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack 2D"])) {
+				if (auto xnam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Attack 2D")) {
 					weap->attackSound2D = xnam;
 					changes.emplace_back("Attack 2D");
 				}
-				if (record["Attack Loop"] != nullptr; auto nam7 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack Loop"])) {
+				if (auto nam7 = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Attack Loop")) {
 					weap->attackLoopSound = nam7;
 					changes.emplace_back("Attack Loop");
 				}
-				if (record["Attack Fail"] != nullptr; auto tnam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Attack Fail"])) {
+				if (auto tnam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Attack Fail")) {
 					weap->attackFailSound = tnam;
 					changes.emplace_back("Attack Fail");
 				}
-				if (record["Idle"] != nullptr; auto unam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Idle"])) {
+				if (auto unam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Idle")) {
 					weap->idleSound = unam;
 					changes.emplace_back("Idle");
 				}
-				if (record["Equip"] != nullptr; auto nam9 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Equip"])) {
+				if (auto nam9 = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Equip")) {
 					weap->equipSound = nam9;
 					changes.emplace_back("Equip");
 				}
-				if (record["Unequip"] != nullptr; auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record["Unequip"])) {
+				if (auto nam8 = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Unequip")) {
 					weap->unequipSound = nam8;
 					changes.emplace_back("Unequip");
 				}
@@ -397,7 +399,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 				for (int i = 0; i < 6; i++) {
 					auto soundID = std::string(magic_enum::enum_name((RE::MagicSystem::SoundID)i));
 					soundID = soundID.substr(1, soundID.length() - 1);
-					slots[i] = record[soundID] != nullptr ? LookupFormString<RE::BGSSoundDescriptorForm>(record[soundID]) : nullptr;
+					slots[i] = LookupFormString<RE::BGSSoundDescriptorForm>(record, soundID);
 					if (slots[i])
 						changes.emplace_back(soundID);
 				}
@@ -427,7 +429,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 		for (auto& record : a_jsonData["Armor Addons"]) {
 			if (auto arma = LookupForm<RE::TESObjectARMA>(record)) {
 				std::list<std::string> changes;
-				if (record["Footstep"] != nullptr; auto sndd = LookupFormString<RE::BGSFootstepSet>(record["Footstep"])) {
+				if (auto sndd = LookupFormString<RE::BGSFootstepSet>(record, "Footstep")) {
 					arma->footstepSet = sndd;
 					changes.emplace_back("Footstep");
 				}
@@ -438,11 +440,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 		for (auto& record : a_jsonData["Armors"]) {
 			if (auto armo = LookupForm<RE::TESObjectARMO>(record)) {
 				std::list<std::string> changes;
-				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
+				if (auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Pick Up")) {
 					armo->pickupSound = ynam;
 					changes.emplace_back("Pick Up");
 				}
-				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
+				if (auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Put Down")) {
 					armo->putdownSound = znam;
 					changes.emplace_back("Put Down");
 				}
@@ -453,11 +455,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 		for (auto& record : a_jsonData["Misc. Items"]) {
 			if (auto misc = LookupForm<RE::TESObjectMISC>(record)) {
 				std::list<std::string> changes;
-				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
+				if (auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Pick Up")) {
 					misc->pickupSound = ynam;
 					changes.emplace_back("Pick Up");
 				}
-				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
+				if (auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Put Down")) {
 					misc->putdownSound = znam;
 					changes.emplace_back("Put Down");
 				}
@@ -468,11 +470,11 @@ void DataStorage::RunConfig(json& a_jsonData)
 		for (auto& record : a_jsonData["Soul Gems"]) {
 			if (auto slgm = LookupForm<RE::TESSoulGem>(record)) {
 				std::list<std::string> changes;
-				if (record["Pick Up"] != nullptr; auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Pick Up"])) {
+				if (auto ynam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Pick Up")) {
 					slgm->pickupSound = ynam;
 					changes.emplace_back("Pick Up");
 				}
-				if (record["Put Down"] != nullptr; auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record["Put Down"])) {
+				if (auto znam = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Put Down")) {
 					slgm->putdownSound = znam;
 					changes.emplace_back("Put Down");
 				}
