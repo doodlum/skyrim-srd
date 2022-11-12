@@ -407,7 +407,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 					"Charge",
 					"Ready",
 					"Release",
-					"Concentration",
+					"Cast Loop",
 					"On Hit"
 				};
 				std::list<std::string> changes;
@@ -498,9 +498,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 		for (auto& record : a_jsonData["Projectiles"]) {
 			if (auto proj = LookupForm<RE::BGSProjectile>(record)) {
 				std::list<std::string> changes;
-				if (auto activeSoundLoop = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Active Loop")) {
+				if (auto activeSoundLoop = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Active")) {
 					proj->data.activeSoundLoop = activeSoundLoop;
-					changes.emplace_back("Active Loop");
+					changes.emplace_back("Active");
 				}
 				if (auto countdownSound = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Countdown")) {
 					proj->data.countdownSound = countdownSound;
