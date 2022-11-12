@@ -15,9 +15,10 @@ auto FormUtil::GetFormFromIdentifier(const std::string& a_identifier) -> RE::TES
 
 auto FormUtil::GetIdentifierFromForm(const RE::TESForm* a_form) -> std::string
 {
-	//auto editorID = a_form->GetFormEditorID();
-	//if (editorID && editorID != "") {
-	//	return editorID;
+	auto editorID = a_form->GetFormEditorID();
+	if (editorID && strlen(editorID) > 1) {
+		return std::format("{}", editorID);
+	}
 	if (auto file = a_form->GetFile()) {
 		return std::format("{:X}|{}", a_form->GetLocalFormID(), file->GetFilename());
 	}
