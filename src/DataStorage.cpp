@@ -9,7 +9,7 @@ bool DataStorage::IsModLoaded(std::string_view a_modname)
 	if (REL::Module::IsVR()) {
 		auto& files = dataHandler->files;
 		for (const auto file : files) {
-			if (file->GetFilename() == a_modname && ((g_mergeMapperInterface) || file->GetCompileIndex() != 255)) // merged mods, will be index 255.
+			if (file->GetFilename() == a_modname && ((g_mergeMapperInterface) || file->GetCompileIndex() != 255))  // merged mods, will be index 255.
 				return true;
 		}
 		return false;
@@ -204,7 +204,7 @@ T* DataStorage::LookupFormString(json& a_record, std::string a_key, bool a_error
 		T* ret;
 		if (formString.contains(".es") && formString.contains("|")) {
 			ret = LookupFormID<T>(formString);
-		} else{
+		} else {
 			ret = LookupEditorID<T>(formString);
 		}
 		if (!ret && a_error) {
@@ -237,8 +237,6 @@ T* DataStorage::LookupForm(json& a_record)
 	}
 	return nullptr;
 }
-
-
 
 std::list<std::string> split(const std::string s, char delim)
 {
@@ -286,7 +284,6 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 	auto soundRecord = new RE::TESRegionDataSound::Sound;
 	return a_sounds.emplace_back(soundRecord);
 }
-
 
 void DataStorage::RunConfig(json& a_jsonData)
 {
@@ -410,7 +407,7 @@ void DataStorage::RunConfig(json& a_jsonData)
 					"Charge",
 					"Ready",
 					"Release",
-					"Concentration Cast Loop",
+					"Concentration",
 					"On Hit"
 				};
 				std::list<std::string> changes;
@@ -495,6 +492,51 @@ void DataStorage::RunConfig(json& a_jsonData)
 					changes.emplace_back("Put Down");
 				}
 				InsertConflictInformation(slgm, changes);
+			}
+		}
+
+		for (auto& record : a_jsonData["Projectiles"]) {
+			if (auto proj = LookupForm<RE::BGSProjectile>(record)) {
+				std::list<std::string> changes;
+				if (auto activeSoundLoop = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Active Loop")) {
+					proj->data.activeSoundLoop = activeSoundLoop;
+					changes.emplace_back("Active Loop");
+				}
+				if (auto countdownSound = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Countdown")) {
+					proj->data.countdownSound = countdownSound;
+					changes.emplace_back("Countdown");
+				}
+				if (auto deactivateSound = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Deactivate")) {
+					proj->data.deactivateSound = deactivateSound;
+					changes.emplace_back("Deactivate");
+				}
+				InsertConflictInformation(proj, changes);
+			}
+		}
+
+		for (auto& record : a_jsonData["Explosions"]) {
+			if (auto expl = LookupForm<RE::BGSExplosion>(record)) {
+				std::list<std::string> changes;
+				if (auto sound1 = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Interior")) {
+					expl->data.sound1 = sound1;
+					changes.emplace_back("Interior");
+				}
+				if (auto sound2 = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Exterior")) {
+					expl->data.sound1 = sound2;
+					changes.emplace_back("Exterior");
+				}
+				InsertConflictInformation(expl, changes);
+			}
+		}
+
+		for (auto& record : a_jsonData["Effect Shaders"]) {
+			if (auto efsh = LookupForm<RE::TESEffectShader>(record)) {
+				std::list<std::string> changes;
+				if (auto ambientSound = LookupFormString<RE::BGSSoundDescriptorForm>(record, "Ambient")) {
+					efsh->data.ambientSound = ambientSound;
+					changes.emplace_back("Ambient");
+				}
+				InsertConflictInformation(efsh, changes);
 			}
 		}
 	}
