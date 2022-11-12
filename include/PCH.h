@@ -25,6 +25,7 @@
 
 #define MAGIC_ENUM_RANGE_MAX 256
 #include <magic_enum.hpp>
+#include <MergeMapperPluginAPI.h>
 
 #include <Windows.h>
 
