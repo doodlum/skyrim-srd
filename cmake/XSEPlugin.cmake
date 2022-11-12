@@ -23,7 +23,8 @@ else()
 	)
 endif()
 
-add_library("${PROJECT_NAME}" SHARED)
+add_library("${PROJECT_NAME}" SHARED
+			${MERGEMAPPER_INCLUDE_DIRS}/MergeMapperPluginAPI.cpp)
 
 target_compile_features(
 	"${PROJECT_NAME}"
@@ -63,6 +64,7 @@ target_precompile_headers(
 )
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+find_path(MERGEMAPPER_INCLUDE_DIRS "MergeMapperPluginAPI.h")
 
 target_include_directories(
 	"${PROJECT_NAME}"
@@ -72,6 +74,7 @@ target_include_directories(
 		${CMAKE_CURRENT_BINARY_DIR}/cmake
 		${CMAKE_CURRENT_SOURCE_DIR}/src
 		${SIMPLEINI_INCLUDE_DIRS}
+		${MERGEMAPPER_INCLUDE_DIRS}
 )
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -85,8 +88,8 @@ if (CMAKE_GENERATOR MATCHES "Visual Studio")
 
 	target_compile_definitions(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
 
-	set(SC_RELEASE_OPTS "/Zi;/fp:fast;/GL;/Gy-;/Gm-;/Gw;/sdl-;/GS-;/guard:cf-;/O2;/Ob2;/Oi;/Ot;/Oy;/fp:except-")	
-	
+	set(SC_RELEASE_OPTS "/Zi;/fp:fast;/GL;/Gy-;/Gm-;/Gw;/sdl-;/GS-;/guard:cf-;/O2;/Ob2;/Oi;/Ot;/Oy;/fp:except-")
+
 	target_compile_options(
 		"${PROJECT_NAME}"
 		PRIVATE
@@ -140,8 +143,8 @@ find_package(magic_enum CONFIG REQUIRED)
 if (BUILD_SKYRIM)
 	find_package(CommonLibSSE REQUIRED)
 	target_link_libraries(
-		${PROJECT_NAME} 
-		PUBLIC 
+		${PROJECT_NAME}
+		PUBLIC
 			CommonLibSSE::CommonLibSSE
 		PRIVATE
 			nlohmann_json::nlohmann_json

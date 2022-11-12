@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
 	SoundRecordDistributor
-	VERSION 1.0.0
+	VERSION 1.2.0
 	LANGUAGES CXX
 )
 
