@@ -209,7 +209,7 @@ T* DataStorage::LookupFormString(json& a_record, std::string a_key, bool a_error
 		}
 		if (!ret && a_error) {
 			std::string name = typeid(T).name();
-			std::string errorMessage = std::format("Form {} of {} does not exist in {}, this entry may be incomplete", formString, name, currentFilename);
+			std::string errorMessage = std::format("	Form {} of {} does not exist in {}, this entry may be incomplete", formString, name, currentFilename);
 			logger::error("{}", errorMessage);
 			RE::DebugMessageBox(errorMessage.c_str());
 		}
@@ -226,17 +226,19 @@ T* DataStorage::LookupForm(json& a_record)
 		if (!ret) {
 			std::string identifier = a_record["Form"];
 			std::string name = typeid(T).name();
-			std::string errorMessage = std::format("Form {} of {} does not exist in {}, skipping entry", identifier, name, currentFilename);
+			std::string errorMessage = std::format("	Form {} of {} does not exist in {}, skipping entry", identifier, name, currentFilename);
 			logger::warn("{}", errorMessage);
 		}
 		return ret;
 	} catch (const std::exception& exc) {
-		std::string errorMessage = std::format("Failed to parse entry in {}\n{}", currentFilename, exc.what());
+		std::string errorMessage = std::format("	Failed to parse entry in {}\n{}", currentFilename, exc.what());
 		logger::error("{}", errorMessage);
 		RE::DebugMessageBox(errorMessage.c_str());
 	}
 	return nullptr;
 }
+
+
 
 std::list<std::string> split(const std::string s, char delim)
 {
@@ -284,7 +286,6 @@ RE::TESRegionDataSound::Sound* GetOrCreateSound(bool& aout_created, RE::BSTArray
 	auto soundRecord = new RE::TESRegionDataSound::Sound;
 	return a_sounds.emplace_back(soundRecord);
 }
-
 
 
 void DataStorage::RunConfig(json& a_jsonData)
@@ -348,10 +349,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 						}
 					}
 				} else {
-					const auto filename = regn->GetDescriptionOwnerFile() ? regn->GetDescriptionOwnerFile()->GetFilename() : ""sv;
-					std::string errorMessage = std::format("RDSA entry {} does not exist in form {} {} {:X}", record["Form"].get<std::string>(), regn->GetFormEditorID(), filename, regn->formID);
-					logger::error("{}", errorMessage);
-					RE::DebugMessageBox(errorMessage.c_str());
+					std::string errorMessage = std::format("RDSA entry does not exist in {}", FormUtil::GetIdentifierFromForm(regn));
+					logger::error("	{}", errorMessage);
+					RE::DebugMessageBox(std::format("{}\n{}", currentFilename, errorMessage).c_str());
 				}
 			}
 		}
@@ -405,12 +405,19 @@ void DataStorage::RunConfig(json& a_jsonData)
 
 		for (auto& record : a_jsonData["Magic Effects"]) {
 			if (auto mgef = LookupForm<RE::EffectSetting>(record)) {
+				static const char* names[6] = {
+					"Sheathe/Draw",
+					"Charge",
+					"Ready",
+					"Release",
+					"Concentration Cast Loop",
+					"On Hit"
+				};
 				std::list<std::string> changes;
 				RE::BGSSoundDescriptorForm* slots[6];
 
 				for (int i = 0; i < 6; i++) {
-					auto soundID = std::string(magic_enum::enum_name((RE::MagicSystem::SoundID)i));
-					soundID = soundID.substr(1, soundID.length() - 1);
+					auto soundID = names[i];
 					slots[i] = LookupFormString<RE::BGSSoundDescriptorForm>(record, soundID);
 					if (slots[i])
 						changes.emplace_back(soundID);
@@ -426,11 +433,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 
 				for (int i = 0; i < 6; i++) {
 					if (slots[i]) {
-						RE::EffectSetting::SoundPair soundPair;
-						soundPair.id = (RE::MagicSystem::SoundID)i;
-						soundPair.sound = slots[i];
-						soundPair.pad04 = 0;
-						mgef->effectSounds.emplace_back(soundPair);
+						std::string errorMessage = std::format("Did not replace {} in {}, wrong spell type?", names[i], FormUtil::GetIdentifierFromForm(mgef));
+						logger::error("	{}", errorMessage);
+						RE::DebugMessageBox(std::format("{}\n{}", currentFilename, errorMessage).c_str());
 					}
 				}
 				InsertConflictInformation(mgef, changes);
