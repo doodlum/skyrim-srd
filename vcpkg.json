@@ -14,8 +14,7 @@
                 "mergemapper",
                 "rapidxml",
                 "yaml-cpp",
-                "nlohmann-json",
-                "magic-enum"
+                "nlohmann-json"
             ]
         }
     },

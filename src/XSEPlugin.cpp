@@ -1,7 +1,5 @@
-
-#include "Hooks.h"
 #include "DataStorage.h"
-
+#include "Hooks.h"
 
 void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
 {

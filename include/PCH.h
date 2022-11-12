@@ -23,11 +23,9 @@
 #endif
 #endif
 
-#define MAGIC_ENUM_RANGE_MAX 256
-#include <magic_enum.hpp>
-#include <MergeMapperPluginAPI.h>
-
 #include <Windows.h>
+
+#include <MergeMapperPluginAPI.h>
 
 #ifdef NDEBUG
 #include <spdlog/sinks/basic_file_sink.h>

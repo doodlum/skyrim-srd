@@ -73,7 +73,6 @@ target_include_directories(
 	PRIVATE
 		${CMAKE_CURRENT_BINARY_DIR}/cmake
 		${CMAKE_CURRENT_SOURCE_DIR}/src
-		${SIMPLEINI_INCLUDE_DIRS}
 		${MERGEMAPPER_INCLUDE_DIRS}
 )
 
@@ -138,7 +137,6 @@ endif()
 find_path(RAPIDXML_INCLUDE_DIRS "rapidxml/rapidxml.hpp")
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(magic_enum CONFIG REQUIRED)
 
 if (BUILD_SKYRIM)
 	find_package(CommonLibSSE REQUIRED)
@@ -150,7 +148,6 @@ if (BUILD_SKYRIM)
 			nlohmann_json::nlohmann_json
 			${RAPIDXML_INCLUDE_DIRS}	
 			yaml-cpp
-			magic_enum::magic_enum
 	)
 else()
 	add_subdirectory(${CommonLibPath} ${CommonLibName} EXCLUDE_FROM_ALL)
