@@ -417,27 +417,30 @@ void DataStorage::RunConfig(json& a_jsonData)
 				};
 				std::list<std::string> changes;
 				RE::BGSSoundDescriptorForm* slots[6];
+				bool useSlots[6] = { false, false, false, false, false, false };
 
 				for (int i = 0; i < 6; i++) {
 					auto soundID = names[i];
-					if (LookupFormString<RE::BGSSoundDescriptorForm>(&slots[i], record, soundID))
+					useSlots[i] = LookupFormString<RE::BGSSoundDescriptorForm>(&slots[i], record, soundID);
+					if (useSlots[i])
 						changes.emplace_back(soundID);
 				}
 
 				for (auto sndd : mgef->effectSounds) {
 					int i = (int)sndd.id;
-					if (slots[i]) {
+					if (useSlots[i]) {
 						sndd.sound = slots[i];
-						slots[i] = nullptr;
+						sndd.pad04 = (bool)slots[i];
+						useSlots[i] = false;
 					}
 				}
 
 				for (int i = 0; i < 6; i++) {
-					if (slots[i]) {
+					if (useSlots[i]) {
 						RE::EffectSetting::SoundPair soundPair;
 						soundPair.id = (RE::MagicSystem::SoundID)i;
 						soundPair.sound = slots[i];
-						soundPair.pad04 = 0;
+						soundPair.pad04 = (bool)slots[i];
 						mgef->effectSounds.emplace_back(soundPair);
 					}
 				}
