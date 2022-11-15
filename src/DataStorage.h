@@ -43,7 +43,7 @@ template <typename T>
 	T* LookupEditorID(std::string a_editorID);
 
 	template <typename T>
-	T* LookupFormString(json& a_record, std::string a_key, bool a_error = true);
+	bool LookupFormString(T** a_type, json& a_record, std::string a_key, bool a_error = true);
 
 	template <typename T>
 	T* LookupForm(json& a_record);
