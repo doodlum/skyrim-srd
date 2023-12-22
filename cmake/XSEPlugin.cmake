@@ -18,18 +18,20 @@ elseif(BUILD_FALLOUT4)
 	set(GameVersion "Fallout 4")
 else()
 	message(
-	FATAL_ERROR
+		FATAL_ERROR
 		"A game must be selected."
 	)
 endif()
 
+find_path(MERGEMAPPER_INCLUDE_DIRS "MergeMapperPluginAPI.h")
+
 add_library("${PROJECT_NAME}" SHARED
-			${MERGEMAPPER_INCLUDE_DIRS}/MergeMapperPluginAPI.cpp)
+	${MERGEMAPPER_INCLUDE_DIRS}/MergeMapperPluginAPI.cpp)
 
 target_compile_features(
 	"${PROJECT_NAME}"
 	PRIVATE
-		cxx_std_23
+	cxx_std_23
 )
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -52,28 +54,28 @@ configure_file(
 target_sources(
 	"${PROJECT_NAME}"
 	PRIVATE
-		${CMAKE_CURRENT_BINARY_DIR}/cmake/Plugin.h
-		${CMAKE_CURRENT_BINARY_DIR}/cmake/version.rc
-		.clang-format
-		.editorconfig)
+	${CMAKE_CURRENT_BINARY_DIR}/cmake/Plugin.h
+	${CMAKE_CURRENT_BINARY_DIR}/cmake/version.rc
+	.clang-format
+	.editorconfig)
 
 target_precompile_headers(
 	"${PROJECT_NAME}"
 	PRIVATE
-		include/PCH.h
+	include/PCH.h
 )
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
-find_path(MERGEMAPPER_INCLUDE_DIRS "MergeMapperPluginAPI.h")
 
 target_include_directories(
 	"${PROJECT_NAME}"
 	PUBLIC
-		${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/include
 	PRIVATE
-		${CMAKE_CURRENT_BINARY_DIR}/cmake
-		${CMAKE_CURRENT_SOURCE_DIR}/src
-		${MERGEMAPPER_INCLUDE_DIRS}
+	${CMAKE_CURRENT_BINARY_DIR}/cmake
+	${CMAKE_CURRENT_SOURCE_DIR}/src
+	${RAPIDXML_INCLUDE_DIRS}
+	${MERGEMAPPER_INCLUDE_DIRS}
 )
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -82,7 +84,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio")
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
 	add_compile_definitions(_UNICODE)
 
 	target_compile_definitions(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
@@ -92,31 +94,30 @@ if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	target_compile_options(
 		"${PROJECT_NAME}"
 		PRIVATE
-			/MP
-			/await
-			/W0
-			/WX
-			/permissive-
-			/Zc:alignedNew
-			/Zc:auto
-			/Zc:__cplusplus
-			/Zc:externC
-			/Zc:externConstexpr
-			/Zc:forScope
-			/Zc:hiddenFriend
-			/Zc:implicitNoexcept
-			/Zc:lambda
-			/Zc:noexceptTypes
-			/Zc:preprocessor
-			/Zc:referenceBinding
-			/Zc:rvalueCast
-			/Zc:sizedDealloc
-			/Zc:strictStrings
-			/Zc:ternary
-			/Zc:threadSafeInit
-			/Zc:trigraphs
-			/Zc:wchar_t
-			/wd4200 # nonstandard extension used : zero-sized array in struct/union
+		/MP
+		/W0
+		/WX
+		/permissive-
+		/Zc:alignedNew
+		/Zc:auto
+		/Zc:__cplusplus
+		/Zc:externC
+		/Zc:externConstexpr
+		/Zc:forScope
+		/Zc:hiddenFriend
+		/Zc:implicitNoexcept
+		/Zc:lambda
+		/Zc:noexceptTypes
+		/Zc:preprocessor
+		/Zc:referenceBinding
+		/Zc:rvalueCast
+		/Zc:sizedDealloc
+		/Zc:strictStrings
+		/Zc:ternary
+		/Zc:threadSafeInit
+		/Zc:trigraphs
+		/Zc:wchar_t
+		/wd4200 # nonstandard extension used : zero-sized array in struct/union
 	)
 
 	target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CONFIG:DEBUG>:/fp:strict>")
@@ -128,26 +129,26 @@ if (CMAKE_GENERATOR MATCHES "Visual Studio")
 	target_link_options(
 		${PROJECT_NAME}
 		PRIVATE
-			/WX
-			"$<$<CONFIG:DEBUG>:/INCREMENTAL;/OPT:NOREF;/OPT:NOICF>"
-			"$<$<CONFIG:RELEASE>:/LTCG;/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/DEBUG:FULL>"
+		/WX
+		"$<$<CONFIG:DEBUG>:/INCREMENTAL;/OPT:NOREF;/OPT:NOICF>"
+		"$<$<CONFIG:RELEASE>:/LTCG;/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/DEBUG:FULL>"
 	)
 endif()
 
 find_path(RAPIDXML_INCLUDE_DIRS "rapidxml/rapidxml.hpp")
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(directxtk CONFIG REQUIRED)
 
-if (BUILD_SKYRIM)
+if(BUILD_SKYRIM)
 	find_package(CommonLibSSE REQUIRED)
 	target_link_libraries(
 		${PROJECT_NAME}
 		PUBLIC
-			CommonLibSSE::CommonLibSSE
+		CommonLibSSE::CommonLibSSE
 		PRIVATE
-			nlohmann_json::nlohmann_json
-			${RAPIDXML_INCLUDE_DIRS}	
-			yaml-cpp
+		nlohmann_json::nlohmann_json
+		yaml-cpp::yaml-cpp
 	)
 else()
 	add_subdirectory(${CommonLibPath} ${CommonLibName} EXCLUDE_FROM_ALL)

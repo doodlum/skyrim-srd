@@ -6,7 +6,7 @@
 bool DataStorage::IsModLoaded(std::string_view a_modname)
 {
 	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
-	if (REL::Module::IsVR()) {
+	if (REL::Module::IsVR() && !dataHandler->VRcompiledFileCollection) { // SkyrimVR ESL support check
 		auto& files = dataHandler->files;
 		for (const auto file : files) {
 			if (file->GetFilename() == a_modname && ((g_mergeMapperInterface) || file->GetCompileIndex() != 255))  // merged mods, will be index 255.
@@ -233,9 +233,8 @@ T* DataStorage::LookupForm(json& a_record)
 {
 	try {
 		T* ret = nullptr;
-		LookupFormString<T>(&ret, a_record, "Form", false); 
-		if (!ret)
-		{
+		LookupFormString<T>(&ret, a_record, "Form", false);
+		if (!ret) {
 			std::string identifier = a_record["Form"];
 			std::string name = typeid(T).name();
 			std::string errorMessage = std::format("	Form {} of {} does not exist in {}, skipping entry", identifier, name, currentFilename);
@@ -325,9 +324,9 @@ void DataStorage::RunConfig(json& a_jsonData)
 				RE::TESRegionDataSound* regionDataEntry = nullptr;
 				for (auto entry : regn->dataList->regionDataList) {
 					if (entry->GetType() == RE::TESRegionData::Type::kSound) {
-						const auto regionDataManager = REL::Module::IsVR() ? reinterpret_cast<RE::TESRegionDataManager**>((char*)dataHandler + 0x1580) : &dataHandler->regionDataManager;
+						const auto regionDataManager = dataHandler->GetRegionDataManager();
 						if (regionDataManager)
-							regionDataEntry = (*regionDataManager)->AsRegionDataSound(entry);
+							regionDataEntry = regionDataManager->AsRegionDataSound(entry);
 						if (regionDataEntry)
 							break;
 					}
