@@ -541,5 +541,16 @@ void DataStorage::RunConfig(json& a_jsonData)
 				InsertConflictInformation(efsh, changes);
 			}
 		}
+
+		for (auto& record : a_jsonData["Ingestibles"]) {
+			if (auto efsh = LookupForm<RE::AlchemyItem>(record)) {
+				std::list<std::string> changes;
+
+				if (LookupFormString<RE::BGSSoundDescriptorForm>(&efsh->data.consumptionSound, record, "Consume"))
+					changes.emplace_back("Consume");
+
+				InsertConflictInformation(efsh, changes);
+			}
+		}
 	}
 }
