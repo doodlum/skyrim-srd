@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/main/scripts/vcpkg.schema.json",
   "name": "commonlibsse-plugin",
   "version-string": "1.0.0",
   "port-version": 0,
@@ -19,6 +19,6 @@
       ]
     }
   },
-  "default-features": ["plugin"],
-  "builtin-baseline": "900cac98fef6cd8da209b6acb79c52deb0e35ecf"
+  "default-features": [ "plugin" ],
+  "builtin-baseline": "53bef8994c541b6561884a8395ea35715ece75db"
 }
