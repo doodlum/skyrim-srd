@@ -23,14 +23,20 @@ public:
 	std::unordered_map<RE::TESForm*, std::unordered_map<std::string, std::list<std::string>>> conflictMap;
 
 	bool IsModLoaded(std::string_view a_modname);
+	bool IsModLoadedVR(std::string_view a_modname); // Add this
 
 	void InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field);
 
 	void InsertConflictInformationRegions(RE::TESForm* a_region, RE::TESForm* a_sound, std::list<std::string> a_fields);
 	void InsertConflictInformation(RE::TESForm* a_form, std::list<std::string> a_fields);
 
+	std::pair<std::set<std::string>, std::set<std::string>> ScanConfigDirectory(); // Add this
+	std::map<std::string, std::set<std::string>> MatchPluginConfigs(const std::set<std::string>& pluginConfigs);  // Add this
+	void ParseAllConfigs( const std::map<std::string, std::set<std::string>>& pluginMap, const std::set<std::string>& generalConfigs); // Add this
+	void PrintConflicts(); // Add this
+
 	void LoadConfigs();
-	void ParseConfigs(std::set<std::string>& a_configs);
+	void ParseConfigs(const std::set<std::string>& a_configs); // Change this to take const reference
 	void RunConfig(json& s_jsonData);
 
 	stl::enumeration<RE::TESRegionDataSound::Sound::Flag, std::uint32_t> GetSoundFlags(std::list<std::string> a_input);
@@ -39,7 +45,7 @@ private:
 	DataStorage() {
 	}
 
-template <typename T>
+	template <typename T>
 	T* LookupEditorID(std::string a_editorID);
 
 	template <typename T>

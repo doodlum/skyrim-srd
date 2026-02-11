@@ -3,18 +3,51 @@
 #include "FormUtil.h"
 #include "tojson.hpp"
 
+
+bool DataStorage::IsModLoadedVR(std::string_view a_modname)
+{
+	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
+	constexpr std::uint8_t NOT_LOADED_IDX = 0xFF;
+
+	for (const auto file : dataHandler->files) {
+		if (!file) {
+			continue;
+		}
+		// Match by filename
+		if (file->GetFilename() != a_modname) {
+			continue;
+		}
+
+		// MergeMapper: merged mods may legitimately have index 255
+		if (g_mergeMapperInterface) {
+			return true;
+		}
+
+		// Otherwise, treat 255 as "not loaded"
+		const auto idx = file->GetCompileIndex();
+		return idx != NOT_LOADED_IDX;
+	}
+
+	// Not found at all
+	return false;
+}
+
 bool DataStorage::IsModLoaded(std::string_view a_modname)
 {
 	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
-	if (REL::Module::IsVR() && !dataHandler->VRcompiledFileCollection) { // SkyrimVR ESL support check
-		auto& files = dataHandler->files;
-		for (const auto file : files) {
-			if (file->GetFilename() == a_modname && ((g_mergeMapperInterface) || file->GetCompileIndex() != 255))  // merged mods, will be index 255.
-				return true;
-		}
-		return false;
+	constexpr std::uint8_t NOT_LOADED_IDX = 0xFF;
+
+	// Skyrim VR without ESL support requires manual file scanning
+	if (REL::Module::IsVR() && !dataHandler->VRcompiledFileCollection) {
+		return IsModLoadedVR(a_modname);
 	}
-	return dataHandler->GetLoadedModIndex(a_modname) || dataHandler->GetLoadedLightModIndex(a_modname);
+
+	// Normal SE/AE path
+	const auto fullIdx  = dataHandler->GetLoadedModIndex(a_modname);
+	const auto lightIdx = dataHandler->GetLoadedLightModIndex(a_modname);
+
+	return fullIdx  != NOT_LOADED_IDX ||
+	lightIdx != NOT_LOADED_IDX;
 }
 
 void DataStorage::InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field)
@@ -55,123 +88,241 @@ void DataStorage::InsertConflictInformation(RE::TESForm* a_form, std::list<std::
 		InsertConflictField(conflictMap[a_form], field);
 }
 
-void DataStorage::LoadConfigs()
+std::pair<std::set<std::string>, std::set<std::string>>
+DataStorage::ScanConfigDirectory()
 {
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	std::set<std::string> generalConfigs;
+	std::set<std::string> pluginConfigs;
 
-	std::set<std::string> configs;
-	std::set<std::string> allpluginconfigs;
-	auto constexpr folder = R"(Data\)"sv;
+	constexpr auto folder = R"(Data\)"sv;
+
+	logger::info("\nScanning {} for configs ending with _SRD.json/.jsonc/.yaml...", folder);
+
 	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
-		if (entry.exists() && !entry.path().empty() && (entry.path().extension() == ".json"sv || entry.path().extension() == ".jsonc"sv || entry.path().extension() == ".yaml"sv)) {
-			const auto path = entry.path().string();
-			const auto filename = entry.path().filename().string();
-			auto lastindex = filename.find_last_of(".");
-			auto rawname = filename.substr(0, lastindex);
-			if (rawname.ends_with("_SRD")) {
-				const auto path = entry.path().string();
-				if (rawname.contains(".es")) {
-					allpluginconfigs.insert(path);
-				} else {
-					configs.insert(path);
-				}
-			}
+		if (!entry.exists() || entry.path().empty()) {
+			continue;
+		}
+
+		const auto ext = entry.path().extension().string();
+		if (ext != ".json" && ext != ".jsonc" && ext != ".yaml") {
+			continue;
+		}
+
+		const auto stem = entry.path().stem().string(); // filename without extension
+		if (!stem.ends_with("_SRD")) {
+			continue;
+		}
+
+		const auto path = entry.path().string();
+
+		// Old logic preserved: plugin configs contain ".es"
+		if (stem.contains(".es")) {
+			logger::info("Found plugin-specific config: {}", path);
+			pluginConfigs.insert(path);
+		} else {
+			logger::info("Found general config: {}", path);
+			generalConfigs.insert(path);
 		}
 	}
 
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	logger::info("\nSearched files in {} milliseconds\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
-	begin = std::chrono::steady_clock::now();
-
-	for (auto& file : RE::TESDataHandler::GetSingleton()->files) {
-		auto pluginname = file->GetFilename();
-		if (IsModLoaded(pluginname)) {
-			std::set<std::string> pluginconfigs;
-			for (const auto& config : allpluginconfigs) {
-				auto filename = std::filesystem::path(config).filename().string();
-				auto lastindex = filename.find_last_of(".");
-				auto rawname = filename.substr(0, lastindex);
-				if (filename.rfind(pluginname, 0) == 0) {
-					pluginconfigs.insert(config);
-				}
-			}
-			ParseConfigs(pluginconfigs);
-		}
-	}
-	ParseConfigs(configs);
-
-	end = std::chrono::steady_clock::now();
-	logger::info("\nParsed configs in {} milliseconds", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
-	begin = std::chrono::steady_clock::now();
-
-	for (auto& [region, conflictMapRegionsSounds] : conflictMapRegions) {
-		if (conflictMapRegionsSounds.size() > 0) {
-			logger::info("\n{}", FormUtil::GetIdentifierFromForm(region));
-			for (auto& [sound, conflictInformation] : conflictMapRegionsSounds) {
-				if (conflictInformation.size() > 0) {
-					logger::info("	{}", FormUtil::GetIdentifierFromForm(sound));
-					for (auto& [field, files] : conflictInformation) {
-						std::string filesString = "";
-						for (auto file : files) {
-							filesString = filesString + " -> " + file;
-						}
-						logger::info("		{} {}", field, filesString);
-					}
-				}
-			}
-		}
-	}
-
-	for (auto& [form, conflictInformation] : conflictMap) {
-		if (conflictInformation.size() > 0) {
-			logger::info("\n{}", FormUtil::GetIdentifierFromForm(form));
-			for (auto& [field, files] : conflictInformation) {
-				std::string filesString = "";
-				for (auto file : files) {
-					filesString = filesString + " -> " + file;
-				}
-				logger::info("	{} {}", field, filesString);
-			}
-		}
-	}
-
-	end = std::chrono::steady_clock::now();
-	logger::info("\nPrinted conflicts in {} milliseconds\n", std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+	return { generalConfigs, pluginConfigs };
 }
 
-void DataStorage::ParseConfigs(std::set<std::string>& a_configs)
+std::map<std::string, std::set<std::string>>
+DataStorage::MatchPluginConfigs(const std::set<std::string>& pluginConfigs)
 {
-	for (auto config : a_configs) {
-		auto path = std::filesystem::path(config).filename();
-		auto filename = path.string();
+	std::map<std::string, std::set<std::string>> result;
+
+	auto* dataHandler = RE::TESDataHandler::GetSingleton();
+
+	logger::info("Matching plugin-specific configs to loaded plugins...");
+	for (auto* file : dataHandler->files) {
+		if (!file) {
+			continue;
+		}
+
+		const auto pluginName = file->GetFilename();
+
+		if (!IsModLoaded(pluginName)) {
+			logger::warn("Plugin {} is not loaded, skipping configs", pluginName);
+			continue;
+		}
+
+		std::set<std::string> matched;
+
+		for (const auto& configPath : pluginConfigs) {
+			const auto configName = std::filesystem::path(configPath).filename().string();
+
+			// Old logic preserved: config filename starts with plugin name
+			if (configName.rfind(pluginName, 0) == 0) {
+				logger::info("Adding config {} for plugin {}", configName, pluginName);
+				matched.insert(configPath);
+			}
+		}
+
+		if (!matched.empty()) {
+			result.emplace(pluginName, std::move(matched));
+		}
+	}
+
+	return result;
+}
+
+void DataStorage::ParseAllConfigs(
+	const std::map<std::string, std::set<std::string>>& pluginMap,
+	const std::set<std::string>& generalConfigs)
+{
+	logger::info("\nParsing configs...");
+
+	for (const auto& [plugin, configs] : pluginMap) {
+		logger::info("Parsing {} configs for plugin {}", configs.size(), plugin);
+		ParseConfigs(configs);
+	}
+
+	if (!generalConfigs.empty()) {
+		logger::info("Parsing {} general configs", generalConfigs.size());
+		ParseConfigs(generalConfigs);
+	}
+}
+
+void DataStorage::PrintConflicts()
+{
+	logger::info("\nConflict summary:\n");
+	if(conflictMapRegions.empty() && conflictMap.empty()) {
+		logger::info("No conflicts found.");
+		return;
+	}
+
+	for (auto& [region, soundMap] : conflictMapRegions) {
+		if (soundMap.empty()) {
+			continue;
+		}
+
+		logger::info("\n{}", FormUtil::GetIdentifierFromForm(region));
+
+		for (auto& [sound, conflictInfo] : soundMap) {
+			if (conflictInfo.empty()) {
+				continue;
+			}
+
+			logger::info("    {}", FormUtil::GetIdentifierFromForm(sound));
+
+			for (auto& [field, files] : conflictInfo) {
+				std::string filesString;
+				for (auto& file : files) {
+					filesString += " -> " + file;
+				}
+				logger::info("        {} {}", field, filesString);
+			}
+		}
+	}
+
+	for (auto& [form, conflictInfo] : conflictMap) {
+		if (conflictInfo.empty()) {
+			continue;
+		}
+
+		logger::info("\n{}", FormUtil::GetIdentifierFromForm(form));
+
+		for (auto& [field, files] : conflictInfo) {
+			std::string filesString;
+			for (auto& file : files) {
+				filesString += " -> " + file;
+			}
+			logger::info("    {} {}", field, filesString);
+		}
+	}
+}
+
+void DataStorage::LoadConfigs()
+{
+	using clock = std::chrono::steady_clock;
+
+	auto begin = clock::now();
+	auto [generalConfigs, pluginConfigs] = ScanConfigDirectory();
+	auto end = clock::now();
+
+	logger::info("Scanned configs in {} ms\n",
+				 std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+
+	if (generalConfigs.empty() && pluginConfigs.empty()) {
+		logger::warn("No configs found in Data\\ ending with _SRD.json/.jsonc/.yaml");
+		return;
+	}
+
+	begin = clock::now();
+	auto pluginMap = MatchPluginConfigs(pluginConfigs);
+	ParseAllConfigs(pluginMap, generalConfigs);
+	end = clock::now();
+
+	logger::info("Parsed configs in {} ms",
+				 std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+
+	begin = clock::now();
+	PrintConflicts();
+	end = clock::now();
+
+	logger::info("Printed conflicts in {} ms",
+				 std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+}
+
+void DataStorage::ParseConfigs(const std::set<std::string>& a_configs)
+{
+	for (const auto& configPath : a_configs) {
+
+		const std::filesystem::path path(configPath);
+		const std::string filename = path.filename().string();
+		const std::string extension = path.extension().string();
+
 		logger::info("Parsing {}", filename);
 		currentFilename = filename;
+
 		try {
-			std::ifstream i(config);
-			if (i.good()) {
-				json data;
-				if (path.extension() == ".yaml"sv) {
-					try {
-						logger::info("Converting {} to JSON object", filename);
-						data = tojson::loadyaml(config);
-					} catch (const std::exception& exc) {
-						std::string errorMessage = std::format("Failed to convert {} to JSON object\n{}", filename, exc.what());
-						logger::error("{}", errorMessage);
-						RE::DebugMessageBox(errorMessage.c_str());
-						continue;
-					}
-				} else {
-					data = json::parse(i, nullptr, true, true);
-				}
-				i.close();
-				RunConfig(data);
-			} else {
-				std::string errorMessage = std::format("Failed to parse {}\nBad file stream", filename);
+			std::ifstream file(configPath);
+
+			if (!file.good()) {
+				const std::string errorMessage =
+				std::format("Failed to parse {}\nBad file stream", filename);
 				logger::error("{}", errorMessage);
 				RE::DebugMessageBox(errorMessage.c_str());
+				continue;
 			}
-		} catch (const std::exception& exc) {
-			std::string errorMessage = std::format("Failed to parse {}\n{}", filename, exc.what());
+
+			json data;
+
+			// YAML → JSON conversion
+			if (extension == ".yaml") {
+				try {
+					logger::info("Converting {} to JSON object", filename);
+					data = tojson::loadyaml(configPath);
+				} catch (const std::exception& exc) {
+					const std::string errorMessage =
+					std::format("Failed to convert {} to JSON object\n{}", filename, exc.what());
+					logger::error("{}", errorMessage);
+					RE::DebugMessageBox(errorMessage.c_str());
+					continue;
+				}
+			}
+			// JSON / JSONC
+			else {
+				try {
+					data = json::parse(file, nullptr, true, true);
+				} catch (const std::exception& exc) {
+					const std::string errorMessage =
+					std::format("Failed to parse {}\n{}", filename, exc.what());
+					logger::error("{}", errorMessage);
+					RE::DebugMessageBox(errorMessage.c_str());
+					continue;
+				}
+			}
+			// No manual file.close() needed — std::ifstream uses RAII and closes automatically (safer).
+
+			// Process the parsed config
+			RunConfig(data);
+		}
+		catch (const std::exception& exc) {
+			const std::string errorMessage =
+			std::format("Failed to parse {}\n{}", filename, exc.what());
 			logger::error("{}", errorMessage);
 			RE::DebugMessageBox(errorMessage.c_str());
 		}
