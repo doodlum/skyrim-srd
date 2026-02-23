@@ -23,7 +23,6 @@ public:
 	std::unordered_map<RE::TESForm*, std::unordered_map<std::string, std::list<std::string>>> conflictMap;
 
 	bool IsModLoaded(std::string_view a_modname);
-	bool IsModLoadedVR(std::string_view a_modname); // Add this
 
 	void InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field);
 

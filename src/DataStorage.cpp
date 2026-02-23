@@ -4,7 +4,7 @@
 #include "tojson.hpp"
 
 
-bool DataStorage::IsModLoadedVR(std::string_view a_modname)
+bool DataStorage::IsModLoaded(std::string_view a_modname)
 {
 	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
 	constexpr std::uint8_t NOT_LOADED_IDX = 0xFF;
@@ -13,41 +13,20 @@ bool DataStorage::IsModLoadedVR(std::string_view a_modname)
 		if (!file) {
 			continue;
 		}
-		// Match by filename
+
 		if (file->GetFilename() != a_modname) {
 			continue;
 		}
 
-		// MergeMapper: merged mods may legitimately have index 255
 		if (g_mergeMapperInterface) {
 			return true;
 		}
 
-		// Otherwise, treat 255 as "not loaded"
 		const auto idx = file->GetCompileIndex();
 		return idx != NOT_LOADED_IDX;
 	}
 
-	// Not found at all
 	return false;
-}
-
-bool DataStorage::IsModLoaded(std::string_view a_modname)
-{
-	static const auto dataHandler = RE::TESDataHandler::GetSingleton();
-	constexpr std::uint8_t NOT_LOADED_IDX = 0xFF;
-
-	// Skyrim VR without ESL support requires manual file scanning
-	if (REL::Module::IsVR() && !dataHandler->VRcompiledFileCollection) {
-		return IsModLoadedVR(a_modname);
-	}
-
-	// Normal SE/AE path
-	const auto fullIdx  = dataHandler->GetLoadedModIndex(a_modname);
-	const auto lightIdx = dataHandler->GetLoadedLightModIndex(a_modname);
-
-	return fullIdx  != NOT_LOADED_IDX ||
-	lightIdx != NOT_LOADED_IDX;
 }
 
 void DataStorage::InsertConflictField(std::unordered_map<std::string, std::list<std::string>>& a_conflicts, std::string a_field)
@@ -115,7 +94,7 @@ DataStorage::ScanConfigDirectory()
 
 		const auto path = entry.path().string();
 
-		// Old logic preserved: plugin configs contain ".es"
+		// Old logic: plugin configs contain ".es"
 		if (stem.contains(".es")) {
 			logger::info("Found plugin-specific config: {}", path);
 			pluginConfigs.insert(path);
@@ -153,7 +132,7 @@ DataStorage::MatchPluginConfigs(const std::set<std::string>& pluginConfigs)
 		for (const auto& configPath : pluginConfigs) {
 			const auto configName = std::filesystem::path(configPath).filename().string();
 
-			// Old logic preserved: config filename starts with plugin name
+			// Old logic: config filename starts with plugin name
 			if (configName.rfind(pluginName, 0) == 0) {
 				logger::info("Adding config {} for plugin {}", configName, pluginName);
 				matched.insert(configPath);
@@ -315,8 +294,6 @@ void DataStorage::ParseConfigs(const std::set<std::string>& a_configs)
 					continue;
 				}
 			}
-			// No manual file.close() needed — std::ifstream uses RAII and closes automatically (safer).
-
 			// Process the parsed config
 			RunConfig(data);
 		}
